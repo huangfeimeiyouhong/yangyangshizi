@@ -296,7 +296,7 @@ function renderHome() {
   setTab('home');
 
   view.innerHTML = `
-  <div class="screen">
+  <div class="screen home-screen">
     <header class="topbar">
       <div class="brand">
         <div class="brand-mark">阳</div>
@@ -308,6 +308,8 @@ function renderHome() {
       </div>
     </header>
 
+    <div class="home-cols">
+    <div class="home-col-main">
     <section class="hero">
       <div class="hero-main">
         <div class="hero-copy">
@@ -344,6 +346,8 @@ function renderHome() {
       </div>
     </div>
 
+    </div>
+    <div class="home-col-map">
     <div class="section-title"><h2>学习地图</h2><span>完成一课，解锁下一课</span></div>
 
     <div class="path">
@@ -368,7 +372,10 @@ function renderHome() {
         </div>`;
       }).join('')}
     </div>
+    </div>
+    </div>
 
+    <div class="home-reviews">
     <button class="review-card" data-act="reviewWrong" style="width:100%;text-align:left">
       <span class="r-ico">📝</span>
       <span style="flex:1"><b>错题复习</b><span>${wrongs ? `还有 ${wrongs} 个字没记牢，来复习一下` : '还没有错题，去闯关试试吧'}</span></span>
@@ -380,6 +387,7 @@ function renderHome() {
       <span style="flex:1"><b>去字库复习</b><span>${TOTAL_CHARS} 个汉字，随时点开听一听</span></span>
       ${ICON.next}
     </button>
+    </div>
 
     <div class="section-title"><h2>游戏角</h2><span>玩一玩，记得更牢</span></div>
     <div class="game-strip">
@@ -471,17 +479,21 @@ function renderLearn(lesson) {
     <div class="card-stage">
       ${i > 0 ? `<button class="card-nav prev" data-act="prev" aria-label="上一个">${ICON.back}</button>` : ''}
       <div class="char-card tone-${lesson.tone}">
-        <div class="pinyin-pill">${PINYIN[char]}</div>
-        <div class="glyph">${char}</div>
-        <div class="char-illus">${info.emoji}</div>
-        <p class="char-meaning">${info.meaning}</p>
-        <div class="word-chips">
-          ${info.words.map(w => `<button class="word-chip" data-word="${w}">${ICON.sound}${w}</button>`).join('')}
+        <div class="char-visual">
+          <div class="pinyin-pill">${PINYIN[char]}</div>
+          <div class="glyph">${char}</div>
+          <div class="char-illus">${info.emoji}</div>
         </div>
-        ${info.sentence ? `<button class="sentence-line" data-sentence="${info.sentence}">${ICON.sound}<span>${info.sentence}</span><small>读一读</small></button>` : ''}
-        <div class="char-actions">
-          <button class="btn btn-ghost" data-act="hear">${ICON.sound} 听一听</button>
-          <button class="btn btn-ghost" data-act="write">${ICON.write} 写一写</button>
+        <div class="char-detail">
+          <p class="char-meaning">${info.meaning}</p>
+          <div class="word-chips">
+            ${info.words.map(w => `<button class="word-chip" data-word="${w}">${ICON.sound}${w}</button>`).join('')}
+          </div>
+          ${info.sentence ? `<button class="sentence-line" data-sentence="${info.sentence}">${ICON.sound}<span>${info.sentence}</span><small>读一读</small></button>` : ''}
+          <div class="char-actions">
+            <button class="btn btn-ghost" data-act="hear">${ICON.sound} 听一听</button>
+            <button class="btn btn-ghost" data-act="write">${ICON.write} 写一写</button>
+          </div>
         </div>
       </div>
       ${!isLast ? `<button class="card-nav next" data-act="next" aria-label="下一个">${ICON.next}</button>` : ''}

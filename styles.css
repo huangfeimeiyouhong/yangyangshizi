@@ -320,9 +320,10 @@ svg { display: block; }
   font-family: var(--font-kai); font-size: 140px;
   font-size: clamp(120px, 34vw, 168px);
   line-height: 1.06; margin: 2px 0 0; color: var(--ink);
-  position: relative; display: inline-block;
+  position: relative; display: block;
   animation: glyph-pop .45s cubic-bezier(.2,1.5,.4,1);
 }
+.char-card .glyph { margin: 0 auto; }
 @keyframes glyph-pop { from { transform: scale(.86); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .glyph .tone-dot { position: absolute; }
 .char-illus {
@@ -814,6 +815,86 @@ svg { display: block; }
 }
 .tab svg { width: 23px; height: 23px; }
 .tab.active { color: var(--orange-d); background: #FFF3DE; }
+
+/* ===== 横屏适配（1200×1920 小平板等，横屏宽度 ≥900px） ===== */
+.home-cols, .home-col-main, .home-col-map, .home-reviews,
+.char-visual, .char-detail { display: block; }
+
+@media (orientation: landscape) and (min-width: 900px) {
+  #app { max-width: 1240px; padding: 0 32px calc(104px + var(--safe-b)); }
+
+  .topbar { padding: 16px 0 8px; }
+  .brand-mark { width: 46px; height: 46px; font-size: 24px; }
+  .brand-text b { font-size: 22px; }
+  .brand-text span { font-size: 12px; }
+
+  /* 首页：左「书本单元」右「学习地图」双栏 */
+  .home-cols { display: flex; align-items: flex-start; }
+  .home-col-main { flex: 1 1 0; min-width: 0; margin-right: 30px; }
+  .home-col-map { flex: 1 1 0; min-width: 0; }
+  .home-col-map .section-title { margin-top: 0; }
+  .hero { padding: 24px 26px 22px; }
+  .hero h1 { font-size: 30px; }
+  .hero p { font-size: 14px; }
+  .hero-mascot { width: 136px; }
+  .hero-stats { margin-top: 16px; }
+  .unit-tabs { flex-wrap: wrap; overflow: visible; margin-top: 14px; }
+  .unit-tab { flex: 1 1 0; min-width: 0; }
+  .unit-band { margin-top: 14px; }
+  .path-row { margin-bottom: 10px; }
+  .lesson-card { width: calc(100% - 44px); }
+
+  .home-reviews { display: flex; margin-top: 10px; }
+  .home-reviews .review-card { flex: 1 1 0; min-width: 0; margin-top: 0; }
+  .home-reviews .review-card + .review-card { margin-left: 14px; }
+
+  .game-strip { display: flex; flex-wrap: wrap; overflow: visible; gap: 0; }
+  .game-strip .game-tile { flex: none; width: calc(11.111% - 10px); margin: 0 4px 8px; padding: 12px 6px 10px; }
+  .game-tile b { font-size: 12.5px; }
+  .game-tile small { font-size: 9.5px; }
+
+  /* 学习页：左大字卡，右拼音释义与操作 */
+  .char-card {
+    display: flex; align-items: center; text-align: left;
+    padding: 24px 28px; border-radius: 32px;
+  }
+  .char-visual { flex: 0 0 42%; min-width: 0; text-align: center; }
+  .char-visual .pinyin-pill { margin: 0 0 4px; }
+  .char-visual .glyph { display: block; margin: 0 auto; }
+  .glyph { font-size: 200px; }
+  .char-illus { width: 72px; height: 72px; font-size: 38px; margin: 0 auto 6px; }
+  .char-detail { flex: 1 1 0; min-width: 0; margin-left: 26px; }
+  .char-meaning { font-size: 17px; margin: 2px 0 14px; }
+  .char-detail .word-chips { justify-content: flex-start; }
+  .word-chip { font-size: 15px; padding: 8px 14px; }
+  .char-detail .sentence-line { margin: 14px 0 0; }
+  .char-detail .char-actions { margin-top: 18px; }
+  .char-detail .char-actions .btn { height: 56px; font-size: 16px; }
+  .card-nav.prev { left: -18px; }
+  .card-nav.next { right: -18px; }
+
+  .learn-footer { display: flex; align-items: center; margin-top: 16px; }
+  .learn-footer .btn { order: 2; width: auto; min-width: 300px; margin-left: auto; flex: none; }
+  .learn-footer .learn-hint { order: 1; margin: 0; text-align: left; font-size: 13px; }
+
+  /* 字库：更密的多列 */
+  .char-grid { display: flex; flex-wrap: wrap; }
+  .char-grid .char-tile { width: calc(10% - 10px); margin: 5px; }
+  .char-tile .ch { font-size: 36px; }
+
+  /* 游戏：更宽的舞台与棋盘，减少纵向滚动 */
+  .mini-prompt, .mini-grid, .diff-panel, .memo-grid, .puzzle-grid, .puzzle-hint,
+  .story-words { max-width: 760px; }
+  .flash-stage { max-width: 560px; }
+  .stage-wrap, .stage-art, .story-bar { max-width: 700px; }
+  .mini-screen .btn-block { display: flex; max-width: 700px; margin-left: auto; margin-right: auto; }
+  .options { max-width: 720px; margin-left: auto; margin-right: auto; }
+  .guess-options { max-width: 520px; }
+  .mini-tile { font-size: 38px; }
+  .reveal-line { font-size: 14px; }
+
+  .tabbar { max-width: 720px; width: min(720px, calc(100% - 40px)); bottom: calc(14px + var(--safe-b)); }
+}
 
 /* ===== 旧版 WebView 兼容（Android 7 初始 WebView / Chrome 52） ===== */
 @supports not (inset: 0) {
