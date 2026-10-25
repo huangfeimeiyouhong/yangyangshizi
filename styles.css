@@ -797,6 +797,103 @@ svg { display: block; }
   * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
 
+/* ===== 宠物小窝 ===== */
+.star-pill small { font-size: 10px; font-weight: 700; color: var(--ink-soft); margin-left: 2px; }
+
+.pet-invite {
+  display: flex; align-items: center; width: 100%; max-width: 420px;
+  text-align: left; background: #fff; border: 1.5px solid #FBE7C6;
+  border-radius: 20px; padding: 12px 16px; margin: 16px auto 0;
+  box-shadow: var(--shadow-sm); transition: transform .15s;
+}
+.pet-invite:active { transform: scale(.98); }
+.pi-cat { font-size: 28px; margin-right: 12px; flex: none; }
+.pi-copy { flex: 1; min-width: 0; display: block; }
+.pi-copy b { display: block; font-size: 15px; }
+.pi-copy small { display: block; font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
+.pi-go { width: 18px; height: 18px; flex: none; color: #C9BBA8; }
+
+.pet-wallet { background: #FFF4DE; }
+.pet-cols { display: block; }
+
+.pet-card {
+  position: relative; text-align: center;
+  background: linear-gradient(170deg, #FFFDF7, #FFF1DA);
+  border: 1.5px solid #FBE7C6; border-radius: 30px;
+  padding: 18px 18px 16px; box-shadow: var(--shadow);
+}
+.pet-bubble {
+  display: inline-block; background: #fff; color: var(--ink-soft);
+  font-size: 12.5px; font-weight: 600; padding: 6px 14px;
+  border-radius: 999px; box-shadow: var(--shadow-sm);
+}
+.pet-art {
+  position: relative; width: 100%; max-width: 320px; margin: 8px auto 0;
+  animation: pet-bob 3.6s ease-in-out infinite; transform-origin: 50% 92%;
+}
+@keyframes pet-bob {
+  0%, 100% { transform: translateY(0) rotate(-.7deg); }
+  50% { transform: translateY(-7px) rotate(.7deg); }
+}
+.pet-cat { display: block; width: 100%; height: auto; }
+.pet-cat.s1 { width: 78%; margin: 0 auto; }
+.pet-cat.s2 { width: 89%; margin: 0 auto; }
+.pet-cat.pet-bounce { animation: pet-jump .72s ease; }
+@keyframes pet-jump {
+  0%, 100% { transform: translateY(0); }
+  32% { transform: translateY(-16px) scale(1.03); }
+  60% { transform: translateY(0); }
+  78% { transform: translateY(-6px); }
+}
+.pet-fx { position: absolute; left: 0; right: 0; top: 8%; pointer-events: none; }
+.pet-cheer {
+  position: absolute; left: 50%; background: #FFCF5C; color: #8A5A00;
+  font-size: 13px; font-weight: 800; padding: 5px 13px; border-radius: 999px;
+  box-shadow: 0 6px 14px rgba(200,140,0,.25); animation: cheer-up 1.45s ease forwards;
+}
+@keyframes cheer-up {
+  0% { opacity: 0; transform: translate(-50%, 10px) scale(.8); }
+  22% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -28px) scale(1); }
+}
+
+.pet-name { margin-top: 6px; }
+.pet-name b { font-size: 22px; letter-spacing: 1px; }
+.pet-name small { display: block; font-size: 12px; color: var(--ink-soft); margin-top: 3px; }
+.pet-meters { margin: 14px 0 4px; }
+.pet-meter { display: flex; align-items: center; font-size: 12px; color: var(--ink-soft); margin: 9px 0; }
+.pet-meter > span { flex: none; width: 74px; text-align: left; }
+.pet-meter .bar { flex: 1; height: 10px; margin: 0 10px; background: #F2E3CB; border-radius: 999px; overflow: hidden; }
+.pet-meter .bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #FFC24B, #FF8A00); transition: width .5s; }
+.pet-meter:nth-child(2) .bar i { background: linear-gradient(90deg, #FF9DB6, #EF476F); }
+.pet-meter.exp .bar i { background: linear-gradient(90deg, #7EE0D2, #17B8A6); }
+.pet-stage-tip { font-size: 11.5px; color: var(--ink-soft); line-height: 1.6; margin: 6px 4px 12px; }
+.pet-card .btn-block { display: flex; height: 46px; max-width: 260px; margin: 0 auto; font-size: 15px; }
+
+.pet-panel { margin-top: 18px; }
+.pet-panel .section-title { margin: 18px 2px 10px; }
+.pet-shop { display: flex; flex-wrap: wrap; }
+.pet-item {
+  width: calc(50% - 12px); margin: 0 6px 10px; padding: 12px 10px 10px;
+  background: #fff; border: 2px solid transparent; border-radius: 18px;
+  box-shadow: var(--shadow-sm); text-align: center;
+  transition: transform .15s, border-color .2s;
+}
+.pet-item:active { transform: scale(.97); }
+.pet-item.owned { border-color: #FFE0A6; }
+.pet-item.wearing { border-color: var(--orange); background: #FFF8EA; }
+.pet-item .pi-ico { display: flex; justify-content: center; line-height: 1.1; }
+.pet-item .pi-ico svg { width: 34px; height: 34px; }
+.pet-item b { display: block; font-size: 14px; margin-top: 4px; }
+.pet-item small { display: block; font-size: 10.5px; color: var(--ink-soft); margin-top: 3px; line-height: 1.4; }
+.pi-price {
+  display: inline-block; margin-top: 8px; padding: 3px 12px;
+  background: #FFF1D8; color: #C98200; font-size: 12px; font-weight: 800;
+  border-radius: 999px;
+}
+.pi-price.wear { background: #E8F8F4; color: #128C7C; }
+.pet-hint { font-size: 11.5px; color: var(--ink-soft); text-align: center; line-height: 1.6; margin: 14px 4px 6px; }
+
 /* ===== 底部导航 ===== */
 .tabbar {
   position: fixed; left: 50%; bottom: calc(12px + var(--safe-b)); transform: translateX(-50%);
@@ -881,6 +978,24 @@ svg { display: block; }
   .char-grid { display: flex; flex-wrap: wrap; }
   .char-grid .char-tile { width: calc(10% - 10px); margin: 5px; }
   .char-tile .ch { font-size: 36px; }
+
+  /* 宠物页：左边小窝，右边食盆和玩具 */
+  .pet-cols { display: flex; align-items: flex-start; }
+  .pet-stage-col { flex: 0 0 420px; min-width: 0; margin-right: 30px; }
+  .pet-panel { flex: 1 1 0; min-width: 0; margin-top: 0; }
+  .pet-card { padding: 14px 20px 14px; }
+  .pet-panel .section-title { margin: 12px 2px 8px; }
+  .pet-panel .section-title:first-child { margin-top: 2px; }
+  .pet-art { max-width: 300px; }
+  .pet-name { margin-top: 2px; }
+  .pet-name b { font-size: 20px; }
+  .pet-meters { max-width: 360px; margin: 10px auto 2px; }
+  .pet-meter { margin: 7px 0; }
+  .pet-stage-tip { max-width: 380px; margin: 4px auto 10px; }
+  .pet-card .btn-block { height: 42px; }
+  .pet-item { width: calc(25% - 12px); padding: 9px 8px 8px; }
+  .pet-item .pi-ico svg { width: 30px; height: 30px; }
+  .pet-hint { max-width: 700px; margin: 12px auto 0; }
 
   /* 游戏：更宽的舞台与棋盘，减少纵向滚动 */
   .mini-prompt, .mini-grid, .diff-panel, .memo-grid, .puzzle-grid, .puzzle-hint,

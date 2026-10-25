@@ -65,7 +65,14 @@ const hex = s => [...s].map(c => c.codePointAt(0).toString(16)).join('');
 
 /* ---------- 状态 ---------- */
 const STORE_KEY = 'yyshizi.v1';
-const DEFAULT_STATE = { stars: {}, mastered: [], traces: 0, wrong: {}, reviewCleared: 0, games: {}, unit: 'nature', settings: { sfx: true, bgm: false } };
+const DEFAULT_PET = { name: '团团', exp: 0, full: 60, mood: 65, meals: 0, plays: 0, owned: [], wearing: [], lastAt: 0, lastPat: 0 };
+const DEFAULT_STATE = { stars: {}, mastered: [], traces: 0, wrong: {}, reviewCleared: 0, games: {}, unit: 'nature', coins: 0, pet: DEFAULT_PET, settings: { sfx: true, bgm: false } };
+const sumStars = obj => {
+  let n = 0;
+  for (const k in (obj || {})) n += obj[k] || 0;
+  return n;
+};
+
 let state = loadState();
 
 function loadState() {
@@ -73,6 +80,9 @@ function loadState() {
     const raw = localStorage.getItem(STORE_KEY);
     if (!raw) return structuredClone(DEFAULT_STATE);
     const s = JSON.parse(raw);
+    const pet = Object.assign(structuredClone(DEFAULT_PET), s.pet || {});
+    pet.owned = (s.pet && s.pet.owned) || [];
+    pet.wearing = (s.pet && s.pet.wearing) || [];
     return {
       stars: s.stars || {},
       mastered: s.mastered || [],
@@ -81,6 +91,9 @@ function loadState() {
       reviewCleared: s.reviewCleared || 0,
       games: s.games || {},
       unit: unitById(s.unit || 'nature').id,
+      /* 老用户：把已收集的星星一次性转成可用星星，不用重新攒 */
+      coins: typeof s.coins === 'number' ? s.coins : sumStars(s.stars),
+      pet: pet,
       settings: Object.assign({ sfx: true, bgm: false }, s.settings || {})
     };
   } catch (e) { return structuredClone(DEFAULT_STATE); }
@@ -91,6 +104,12 @@ function saveState() {
 
 const allUnitChars = [...new Set(LESSONS.flatMap(l => l.chars))];
 const totalStars = () => Object.values(state.stars).reduce((a, b) => a + b, 0);
+const coinCount = () => Math.max(0, state.coins || 0);
+function earnStars(n) {
+  if (!n) return;
+  state.coins = coinCount() + n;
+  saveState();
+}
 const lessonById = id => LESSONS.find(l => l.id === id);
 const lessonsOfUnit = unitId => LESSONS.filter(l => l.unitId === unitId);
 const nextLessonOf = id => {
@@ -303,7 +322,7 @@ function renderHome() {
         <div class="brand-text"><b>阳阳识字</b><span>KIDS CHINESE</span></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <div class="star-pill"><span class="star-ico">★</span>${totalStars()}</div>
+        <div class="star-pill"><span class="star-ico">★</span>${coinCount()}<small>可用</small></div>
         <button class="icon-btn" data-act="profile" aria-label="我的">${ICON.gear}</button>
       </div>
     </header>
@@ -862,6 +881,7 @@ function finishGame(lesson, game) {
   const prev = state.stars[lesson.id] || 0;
   state.stars[lesson.id] = Math.max(prev, stars);
   lesson.chars.forEach(c => { if (!state.mastered.includes(c)) state.mastered.push(c); });
+  earnStars(stars);
   saveState();
   cur.result = { stars, mistakes };
   cur.game = null;
@@ -886,8 +906,13 @@ function renderResult(lesson, result) {
     <div class="result-stats">
       <div class="result-stat"><b>${lesson.chars.length}</b><span>认识汉字</span></div>
       <div class="result-stat"><b>${result.mistakes}</b><span>小失误</span></div>
-      <div class="result-stat"><b>${totalStars()}</b><span>总星星</span></div>
+      <div class="result-stat"><b>+${stars}</b><span>可用星星</span></div>
     </div>
+    <button class="pet-invite" data-act="pet">
+      <span class="pi-cat">🐱</span>
+      <span class="pi-copy"><b>团团还在小窝里等你</b><small>用星星给它买小鱼干吃</small></span>
+      <span class="pi-go">${ICON.next}</span>
+    </button>
     <div class="result-actions">
       ${next ? `<button class="btn btn-primary" data-act="nextLesson">${next.unitId === lesson.unitId ? `进入第 ${next.index} 课` : `${next.unitName}单元 · ${next.title}`} ${ICON.right}</button>` : ''}
       <button class="btn btn-teal" data-act="backHome">回到首页</button>
@@ -897,6 +922,7 @@ function renderResult(lesson, result) {
 
   const nextBtn = $('[data-act="nextLesson"]');
   if (nextBtn) nextBtn.onclick = () => goLesson(next.id);
+  $('[data-act="pet"]').onclick = () => { cur = { lessonId: null, learnIndex: 0, game: null, result: null }; location.hash = '#/pet'; };
   $('[data-act="backHome"]').onclick = () => { cur = { lessonId: null, learnIndex: 0, game: null, result: null }; location.hash = '#/home'; };
   $('[data-act="replay"]').onclick = () => {
     cur.result = null;
@@ -964,6 +990,7 @@ function renderReview() {
       review.locked = true;
       review.cleared++;
       state.reviewCleared = (state.reviewCleared || 0) + 1;
+      earnStars(1);
       saveState();
       clearWrong(target);
       el.classList.add('correct');
@@ -1505,6 +1532,7 @@ function renderMiniResult(g) {
   const prev = state.games[g.id] || 0;
   const best = Math.max(prev, stars);
   if (stars > prev) { state.games[g.id] = stars; saveState(); }
+  if (!mini.rewarded) { mini.rewarded = true; earnStars(stars); }
   fx('score_1');
   burstConfetti(1100);
 
@@ -1514,10 +1542,15 @@ function renderMiniResult(g) {
     <h1>${stars === 3 ? '太厉害了！' : '游戏完成！'}</h1>
     <p>${g.name} · 共 ${mini.total} ${g.id === 'theater' ? '个故事' : '关'}</p>
     <div class="result-stats">
-      <div class="result-stat"><b>${stars}</b><span>获得星星</span></div>
+      <div class="result-stat"><b>+${stars}</b><span>可用星星</span></div>
       <div class="result-stat"><b>${mini.mistakes}</b><span>出错次数</span></div>
       <div class="result-stat"><b>${best}</b><span>最好成绩</span></div>
     </div>
+    <button class="pet-invite" data-act="pet">
+      <span class="pi-cat">🐱</span>
+      <span class="pi-copy"><b>去小窝看看团团</b><small>星星可以换小鱼干和玩具</small></span>
+      <span class="pi-go">${ICON.next}</span>
+    </button>
     <div class="result-actions">
       <button class="btn btn-primary" data-act="again">再玩一次 ${ICON.right}</button>
       <button class="btn btn-teal" data-act="home">回到首页</button>
@@ -1525,6 +1558,7 @@ function renderMiniResult(g) {
     </div>
   </div>`;
   $('[data-act="again"]').onclick = () => startMiniGame(g.id);
+  $('[data-act="pet"]').onclick = () => { mini = null; location.hash = '#/pet'; };
   $('[data-act="home"]').onclick = () => { mini = null; location.hash = '#/home'; };
   $('[data-act="games"]').onclick = () => {
     mini = null;
@@ -1547,7 +1581,7 @@ function renderLibrary() {
         <h1>汉字字库</h1>
         <p>${UNITS.length} 个单元 · 共 ${TOTAL_CHARS} 个汉字</p>
       </div>
-      <div class="star-pill"><span class="star-ico">★</span>${totalStars()}</div>
+      <div class="star-pill"><span class="star-ico">★</span>${coinCount()}<small>可用</small></div>
     </div>
     ${UNITS.map(u => {
       const chars = [...new Set(u.lessons.flatMap(l => l.chars))];
@@ -1661,7 +1695,9 @@ function renderProfile() {
     { ico: '🎒', name: '单元旅行家', desc: '学完 3 个单元', on: finishedUnits >= 3 },
     { ico: '🌟', name: '满分小能手', desc: '一课拿到 3 星', on: Object.values(state.stars).some(s => s >= 3) },
     { ico: '✍️', name: '小小书法家', desc: '描写 5 个字', on: state.traces >= 5 },
-    { ico: '📝', name: '错题克星', desc: '复习消除 5 次错题', on: (state.reviewCleared || 0) >= 5 }
+    { ico: '📝', name: '错题克星', desc: '复习消除 5 次错题', on: (state.reviewCleared || 0) >= 5 },
+    { ico: '🐱', name: '小猫家长', desc: '喂团团吃 3 次', on: (state.pet.meals || 0) >= 3 },
+    { ico: '👑', name: '猫大王铲屎官', desc: '团团长成猫大王', on: petStageIndex() >= 3 }
   ];
 
   view.innerHTML = `
@@ -1736,6 +1772,270 @@ function renderProfile() {
   };
 }
 
+/* ---------- 宠物：小猫团团 ---------- */
+const PET_STAGES = [
+  { name: '奶猫', need: 0, cls: 's1', tip: '刚来到小窝，还怯生生的' },
+  { name: '小橘猫', need: 60, cls: 's2', tip: '会自己舔毛啦' },
+  { name: '神气猫', need: 160, cls: 's3', tip: '喜欢跳上跳下' },
+  { name: '猫大王', need: 320, cls: 's4', tip: '小窝里最厉害的猫' }
+];
+const PET_FOODS = [
+  { id: 'fish', name: '小鱼干', ico: '🐟', cost: 2, exp: 8, full: 18 },
+  { id: 'milk', name: '牛奶', ico: '🥛', cost: 3, exp: 10, full: 24 },
+  { id: 'can', name: '鱼罐头', ico: '🥫', cost: 5, exp: 16, full: 32 },
+  { id: 'cake', name: '小鱼蛋糕', ico: '🍰', cost: 8, exp: 26, full: 22 }
+];
+const PET_TOYS = [
+  { id: 'wand', name: '逗猫棒', ico: '🪄', cost: 3, exp: 6, mood: 20 },
+  { id: 'yarn', name: '毛线球', ico: '🧶', cost: 4, exp: 8, mood: 26 },
+  { id: 'box', name: '纸箱城堡', ico: '📦', cost: 6, exp: 12, mood: 32 }
+];
+const PET_DECOR = [
+  { id: 'bow', name: '蝴蝶结', ico: '🎀', cost: 6 },
+  { id: 'flower', name: '小花', ico: '🌸', cost: 7 },
+  { id: 'scarf', name: '小围巾', ico: '🧣', cost: 9 },
+  { id: 'crown', name: '小皇冠', ico: '👑', cost: 15 }
+];
+
+const petStageIndex = () => {
+  let idx = 0;
+  for (let i = 0; i < PET_STAGES.length; i++) if (state.pet.exp >= PET_STAGES[i].need) idx = i;
+  return idx;
+};
+const petLevel = () => 1 + Math.floor(state.pet.exp / 20);
+
+/* 离开一段时间后慢慢有点饿、有点想你 */
+function petTick() {
+  const p = state.pet;
+  const now = Date.now();
+  if (!p.lastAt) { p.lastAt = now; saveState(); return; }
+  const hours = (now - p.lastAt) / 3600000;
+  if (hours < 0.5) return;
+  p.full = Math.max(10, Math.round(p.full - Math.min(30, hours * 2.5)));
+  p.mood = Math.max(15, Math.round(p.mood - Math.min(20, hours * 1.5)));
+  p.lastAt = now;
+  saveState();
+}
+
+function petSVG() {
+  const st = petStageIndex();
+  const p = state.pet;
+  const wearing = p.wearing || [];
+  const sleepy = p.full < 30 || p.mood < 25;
+  const happy = p.mood >= 40;
+  const eyes = sleepy
+    ? '<path d="M95 99q6 6 13 0M132 99q6 6 13 0" fill="none" stroke="#4A3428" stroke-width="3.4" stroke-linecap="round"/>'
+    : '<ellipse cx="101" cy="100" rx="6.4" ry="7.6" fill="#3B2B2B"/><circle cx="103.2" cy="97" r="2.2" fill="#fff"/>' +
+      '<ellipse cx="139" cy="100" rx="6.4" ry="7.6" fill="#3B2B2B"/><circle cx="141.2" cy="97" r="2.2" fill="#fff"/>';
+  const mouth = happy
+    ? '<path d="M120 117v3M109 121q6 8 11 0M120 121q5 8 11 0" fill="none" stroke="#6E3230" stroke-width="2.4" stroke-linecap="round"/>'
+    : '<path d="M120 117v3M112 124h16" fill="none" stroke="#6E3230" stroke-width="2.4" stroke-linecap="round"/>';
+  const deco = {
+    bow: '<g><path d="M160 44l-15-9v18z" fill="#F0618C"/><path d="M160 44l15-9v18z" fill="#F0618C"/><circle cx="160" cy="44" r="5.2" fill="#FFC9DA"/></g>',
+    flower: '<g transform="translate(82 40)"><circle cx="0" cy="-9" r="6" fill="#FF9F1C"/><circle cx="8.5" cy="-2.8" r="6" fill="#FF9F1C"/><circle cx="5.3" cy="7.3" r="6" fill="#FF9F1C"/><circle cx="-5.3" cy="7.3" r="6" fill="#FF9F1C"/><circle cx="-8.5" cy="-2.8" r="6" fill="#FF9F1C"/><circle cx="0" cy="0" r="5" fill="#FFE28A"/></g>',
+    scarf: '<g><path d="M94 137q26 15 52 0v13q-26 15-52 0z" fill="#EF476F"/><path d="M140 148l8 26-11 4-5-23z" fill="#E63946"/></g>',
+    crown: '<g><path d="M98 50l5-22 17 12 17-12 5 22z" fill="#FFD166" stroke="#E9A700" stroke-width="2" stroke-linejoin="round"/><circle cx="120" cy="29" r="3.4" fill="#EF476F"/><circle cx="103" cy="42" r="2.6" fill="#EF476F"/><circle cx="137" cy="42" r="2.6" fill="#EF476F"/></g>'
+  };
+  const worn = wearing.map(id => deco[id] || '').join('');
+  const sparkle = st === 3
+    ? '<g opacity=".95"><path d="M54 66l3-8 3 8 8 3-8 3-3 8-3-8-8-3z" fill="#FFD166"/><path d="M186 92l2.4-6 2.4 6 6 2.4-6 2.4-2.4 6-2.4-6-6-2.4z" fill="#FFD166"/></g>'
+    : '';
+
+  return `<svg class="pet-cat ${PET_STAGES[st].cls}" viewBox="0 0 240 210" aria-hidden="true">
+    <ellipse cx="120" cy="199" rx="58" ry="8" fill="rgba(80,50,20,.13)"/>
+    <path d="M168 172c27 3 41-11 36-29-3-13-15-18-25-13" fill="none" stroke="#F3A94F" stroke-width="15" stroke-linecap="round"/>
+    <ellipse cx="120" cy="152" rx="55" ry="40" fill="#F7B267"/>
+    <ellipse cx="120" cy="160" rx="33" ry="28" fill="#FFF2DC"/>
+    <path d="M82 132q10 9 3 21M158 132q-10 9-3 21" fill="none" stroke="#E8943B" stroke-width="6" stroke-linecap="round"/>
+    <ellipse cx="97" cy="184" rx="17" ry="10" fill="#FFF2DC"/>
+    <ellipse cx="143" cy="184" rx="17" ry="10" fill="#FFF2DC"/>
+    <path d="M90 183v5M97 182v6M104 183v5M136 183v5M143 182v6M150 183v5" stroke="#E7C79C" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M79 73L66 30Q65 23 73 27L107 47Z" fill="#F7B267"/>
+    <path d="M161 73L174 30Q175 23 167 27L133 47Z" fill="#F7B267"/>
+    <path d="M82 66L75 40L99 52Z" fill="#F7A3B0"/>
+    <path d="M158 66L165 40L141 52Z" fill="#F7A3B0"/>
+    <ellipse cx="120" cy="101" rx="49" ry="45" fill="#F7B267"/>
+    <path d="M102 62q18-7 36 0M112 55v11M128 55v11" fill="none" stroke="#E8943B" stroke-width="5" stroke-linecap="round"/>
+    <ellipse cx="91" cy="115" rx="9" ry="5" fill="#FFB3B3" opacity=".6"/>
+    <ellipse cx="149" cy="115" rx="9" ry="5" fill="#FFB3B3" opacity=".6"/>
+    ${eyes}
+    <path d="M114 110h12l-6 7z" fill="#F07C8E"/>
+    ${mouth}
+    <path d="M74 103h17M74 112l15 3M166 103h-17M166 112l-15 3" stroke="#E3A25F" stroke-width="2" stroke-linecap="round"/>
+    ${worn}
+    ${sparkle}
+  </svg>`;
+}
+
+function petMoodLine() {
+  const p = state.pet;
+  if (p.full < 30) return `${p.name}饿得喵喵叫…`;
+  if (p.mood < 30) return `${p.name}想和你玩一会儿`;
+  if (petStageIndex() === 3) return `${p.name}最喜欢你啦！`;
+  return `${p.name}在小窝里等你`;
+}
+
+/* 商品图标用内联 SVG：Android 7 等旧系统字体缺少 🥛🥫🪄🧶 等新 Emoji */
+const PET_ICONS = {
+  fish: '<svg viewBox="0 0 32 32"><path d="M20 16c0-4.4-3.6-7-8-7s-8 3.1-8 7 3.6 7 8 7 8-2.6 8-7z" fill="#FFB03B"/><path d="M20 16l8-6v12z" fill="#FF8A00"/><circle cx="9.6" cy="13.6" r="1.3" fill="#5A3A1A"/><path d="M5 13c2-1.8 4-1.8 6 0" stroke="#FF8A00" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>',
+  milk: '<svg viewBox="0 0 32 32"><path d="M9 12l7-4 7 4v13a2 2 0 0 1-2 2H11a2 2 0 0 1-2-2z" fill="#FBF7EF" stroke="#E0D3BE" stroke-width="1.4"/><path d="M9 12l7 3.4 7-3.4-7-4z" fill="#D9F1FA"/><rect x="12.4" y="18" width="7.2" height="5" rx="1.2" fill="#48BFE3"/></svg>',
+  can: '<svg viewBox="0 0 32 32"><rect x="8.5" y="8" width="15" height="17" rx="2.4" fill="#CBD5DD"/><ellipse cx="16" cy="8.4" rx="7.5" ry="2.4" fill="#E8EEF3" stroke="#B5C0C9" stroke-width="1.2"/><rect x="8.5" y="13" width="15" height="6.6" fill="#FF9F1C"/><path d="M12.4 16.4c1.3-1.8 2.7-1.8 4 0s2.7 1.8 4 0" stroke="#FFF" stroke-width="1.3" fill="none" stroke-linecap="round"/><ellipse cx="16" cy="25" rx="7.5" ry="2.4" fill="#AEB9C2"/></svg>',
+  cake: '<svg viewBox="0 0 32 32"><path d="M6 24h20l-2-11H8z" fill="#FFC9DD"/><path d="M8 13h16l-1.2-3H9.2z" fill="#FFF3F8"/><path d="M5.4 24h21.2v3.2H5.4z" fill="#F3A7C6"/><circle cx="16" cy="7.6" r="2.3" fill="#EF476F"/><path d="M16 10.2v2.2" stroke="#8A5A38" stroke-width="1.4" stroke-linecap="round"/></svg>',
+  wand: '<svg viewBox="0 0 32 32"><path d="M6.6 27.4L19 14.6" stroke="#C08B5C" stroke-width="2.6" stroke-linecap="round"/><path d="M22 4.6l1.7 3.9 3.9 1.7-3.9 1.7-1.7 3.9-1.7-3.9-3.9-1.7 3.9-1.7z" fill="#FFD166"/><path d="M20.4 13.2c1.8-3 4.6-4.4 8-3.6-1.8 3.2-4.8 4.8-8 3.6z" fill="#EF476F"/></svg>',
+  yarn: '<svg viewBox="0 0 32 32"><circle cx="15" cy="18" r="9.6" fill="#9B5DE5"/><path d="M7.6 23.4c3.4-6.4 8-9.4 15.4-8.6M9.2 27.4c2.8-8 7.4-11.6 15.2-11.8M12.4 9.4c-1.6 5.8-.4 10.6 4.4 15.4" stroke="#BC96F2" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M23.4 9.6l6-3.4-1 3.4 3 1.4-5.8 1.8z" fill="#BC96F2"/></svg>',
+  box: '<svg viewBox="0 0 32 32"><path d="M4.4 12L16 7l11.6 5v5.4H4.4z" fill="#DDA45F"/><path d="M4.4 17.4h23.2V27H4.4z" fill="#C98B45"/><path d="M16 7v20" stroke="#B2743A" stroke-width="1.4"/><path d="M4.4 17.4l5.2 4 6.4-4 6.4 4 5.2-4" fill="none" stroke="#F0C99A" stroke-width="1.5"/></svg>',
+  bow: '<svg viewBox="0 0 32 32"><path d="M15.4 16.4C12 12 8.2 10 5.4 12.4s-1.8 8.6 2 8.6 5.6-2.2 8-4.6z" fill="#EF476F"/><path d="M16.6 16.4C20 12 23.8 10 26.6 12.4s1.8 8.6-2 8.6-5.6-2.2-8-4.6z" fill="#EF476F"/><circle cx="16" cy="16.4" r="3.1" fill="#D63A60"/></svg>',
+  flower: '<svg viewBox="0 0 32 32"><g fill="#FF8FB1"><circle cx="16" cy="9.2" r="4.2"/><circle cx="23" cy="14.2" r="4.2"/><circle cx="20.4" cy="22.2" r="4.2"/><circle cx="11.6" cy="22.2" r="4.2"/><circle cx="9" cy="14.2" r="4.2"/></g><circle cx="16" cy="16.6" r="4.2" fill="#FFD166"/></svg>',
+  scarf: '<svg viewBox="0 0 32 32"><path d="M6.4 8.4h19.2v5.4A9.6 9.6 0 0 1 16 23.4 9.6 9.6 0 0 1 6.4 13.8z" fill="#EF476F"/><path d="M6.4 8.4h19.2v3.2H6.4z" fill="#FF8FA8"/><path d="M19.4 19.6h6v8.8a2 2 0 0 1-4 0z" fill="#E03A5E"/><path d="M19.4 24.6h6" stroke="#FFB3C4" stroke-width="2"/></svg>',
+  crown: '<svg viewBox="0 0 32 32"><path d="M5 23.4l1.8-12.4 6.2 6 3-9 3 9 6.2-6 1.8 12.4z" fill="#FFC24B" stroke="#E9A700" stroke-width="1.4" stroke-linejoin="round"/><circle cx="6.8" cy="9.6" r="1.9" fill="#FFD166"/><circle cx="16" cy="5.6" r="1.9" fill="#FFD166"/><circle cx="25.2" cy="9.6" r="1.9" fill="#FFD166"/><rect x="5" y="22.8" width="22" height="4.2" rx="1.6" fill="#FFB03B" stroke="#E9A700" stroke-width="1.2"/></svg>'
+};
+const petIcon = item => PET_ICONS[item.id] || item.ico;
+
+function petShopCard(item, kind) {
+  const p = state.pet;
+  const isDecor = kind === 'decor';
+  const owned = isDecor && (p.owned || []).indexOf(item.id) > -1;
+  const wearing = isDecor && (p.wearing || []).indexOf(item.id) > -1;
+  const meta = kind === 'food' ? `成长 +${item.exp} · 饱腹 +${item.full}`
+    : kind === 'toy' ? `成长 +${item.exp} · 心情 +${item.mood}`
+    : (wearing ? '正在戴着' : owned ? '点一下就能戴' : '买一次，永久拥有');
+  return `<button class="pet-item ${wearing ? 'wearing' : ''} ${owned ? 'owned' : ''}" data-kind="${kind}" data-id="${item.id}">
+    <span class="pi-ico">${petIcon(item)}</span>
+    <b>${item.name}</b>
+    <small>${meta}</small>
+    ${owned ? `<span class="pi-price wear">${wearing ? '已戴上' : '戴上'}</span>` : `<span class="pi-price">★ ${item.cost}</span>`}
+  </button>`;
+}
+
+function petCheer(text) {
+  const box = $('#pet-fx');
+  if (!box) return;
+  const el = document.createElement('span');
+  el.className = 'pet-cheer';
+  el.textContent = text;
+  box.appendChild(el);
+  const cat = $('.pet-cat');
+  if (cat) {
+    cat.classList.add('pet-bounce');
+    setTimeout(() => cat.classList.remove('pet-bounce'), 760);
+  }
+  setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 1500);
+}
+
+function bitPet() {
+  const p = state.pet;
+  const now = Date.now();
+  if (p.lastPat && now - p.lastPat < 800) return;
+  p.lastPat = now;
+  p.mood = Math.min(100, p.mood + 3);
+  saveState();
+  renderPet();
+  petCheer('咕噜咕噜～');
+}
+
+function buyPet(kind, id) {
+  const pool = kind === 'food' ? PET_FOODS : kind === 'toy' ? PET_TOYS : PET_DECOR;
+  const item = pool.filter(x => x.id === id)[0];
+  if (!item) return;
+  const p = state.pet;
+  if (kind === 'decor') {
+    if ((p.owned || []).indexOf(id) < 0) {
+      if (coinCount() < item.cost) return petNoStar(item.cost);
+      state.coins = coinCount() - item.cost;
+      p.owned.push(id);
+      p.wearing.push(id);
+      saveState();
+      renderPet();
+      petCheer(`${item.name} 买好啦`);
+      return;
+    }
+    const at = p.wearing.indexOf(id);
+    if (at > -1) p.wearing.splice(at, 1); else p.wearing.push(id);
+    saveState();
+    fx('click_1');
+    renderPet();
+    return;
+  }
+  if (coinCount() < item.cost) return petNoStar(item.cost);
+  const stageBefore = petStageIndex();
+  const levelBefore = petLevel();
+  state.coins = coinCount() - item.cost;
+  p.exp += item.exp;
+  if (kind === 'food') {
+    p.full = Math.min(100, p.full + item.full);
+    p.mood = Math.min(100, p.mood + 4);
+    p.meals = (p.meals || 0) + 1;
+  } else {
+    p.mood = Math.min(100, p.mood + item.mood);
+    p.plays = (p.plays || 0) + 1;
+  }
+  p.lastAt = Date.now();
+  saveState();
+  fx(kind === 'food' ? 'correct' : 'click_1');
+  renderPet();
+  petCheer(kind === 'food' ? `+${item.exp} 成长` : `心情 +${item.mood}`);
+  if (petStageIndex() > stageBefore) {
+    burstConfetti(1000);
+    toast(`${p.name}长大啦，变成「${petStage().name}」！`);
+  } else if (petLevel() > levelBefore) {
+    toast(`${p.name}升到 Lv.${petLevel()} 啦`);
+  }
+}
+
+function petNoStar(cost) {
+  fx('incorrect');
+  toast(`星星不够啦，还差 ${cost - coinCount()} 颗，去学习赚星星吧`);
+}
+
+function renderPet() {
+  tabbar.hidden = false;
+  setTab('pet');
+  petTick();
+  const p = state.pet;
+  const st = petStageIndex();
+  const stage = PET_STAGES[st];
+  const nextStage = PET_STAGES[st + 1];
+  const expPct = nextStage
+    ? Math.min(100, Math.round(((p.exp - stage.need) / (nextStage.need - stage.need)) * 100))
+    : 100;
+
+  view.innerHTML = `
+  <div class="screen pet-screen">
+    <div class="subbar">
+      <div class="titles"><h1>${p.name}的小窝</h1><p>喂它吃东西、陪它玩，一起长大</p></div>
+      <div class="star-pill pet-wallet"><span class="star-ico">★</span>${coinCount()}<small>可用</small></div>
+    </div>
+    <div class="pet-cols">
+      <div class="pet-stage-col">
+        <div class="pet-card">
+          <div class="pet-bubble">${petMoodLine()}</div>
+          <div class="pet-art">${petSVG()}<div class="pet-fx" id="pet-fx"></div></div>
+          <div class="pet-name"><b>${p.name}</b><small>Lv.${petLevel()} · ${stage.name}</small></div>
+          <div class="pet-meters">
+            <div class="pet-meter"><span>🍚 饱腹</span><div class="bar"><i style="width:${p.full}%"></i></div></div>
+            <div class="pet-meter"><span>💗 心情</span><div class="bar"><i style="width:${p.mood}%"></i></div></div>
+            <div class="pet-meter exp"><span>🌱 成长</span><div class="bar"><i style="width:${expPct}%"></i></div></div>
+          </div>
+          <p class="pet-stage-tip">${stage.tip}${nextStage ? ` · 再攒 ${nextStage.need - p.exp} 点成长，就能变成「${nextStage.name}」` : ' · 已经是猫大王啦'}</p>
+          <button class="btn btn-ghost btn-block" data-act="pat">摸摸${p.name}</button>
+        </div>
+      </div>
+      <div class="pet-panel">
+        <div class="section-title"><h2>喂${p.name}吃点</h2><span>花星星买，吃得香长得快</span></div>
+        <div class="pet-shop">${PET_FOODS.map(f => petShopCard(f, 'food')).join('')}</div>
+        <div class="section-title"><h2>一起玩</h2><span>心情好，学得快</span></div>
+        <div class="pet-shop">${PET_TOYS.map(t => petShopCard(t, 'toy')).join('')}</div>
+        <div class="section-title"><h2>小装扮</h2><span>买一次，随时换</span></div>
+        <div class="pet-shop">${PET_DECOR.map(d => petShopCard(d, 'decor')).join('')}</div>
+        <p class="pet-hint">星星不够？完成一课、复习错题或玩一局游戏，都能赚到星星。</p>
+      </div>
+    </div>
+  </div>`;
+
+  $$('.pet-item').forEach(el => el.onclick = () => buyPet(el.dataset.kind, el.dataset.id));
+  $('[data-act="pat"]').onclick = bitPet;
+}
+
 /* ---------- 导航 ---------- */
 function setTab(name) {
   $$('.tab').forEach(el => el.classList.toggle('active', el.dataset.tab === name));
@@ -1754,6 +2054,7 @@ function renderRoute() {
   else if (page === 'review') renderReview();
   else if (page === 'game') renderMini();
   else if (page === 'library') renderLibrary();
+  else if (page === 'pet') renderPet();
   else if (page === 'profile') renderProfile();
   else renderHome();
   window.scrollTo(0, 0);
